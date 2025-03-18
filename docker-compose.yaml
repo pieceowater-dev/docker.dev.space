@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  gateway:
+    container_name: lotof_hub_gtw
+    build:
+      context: ../lotof.hub.gtw
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+      - lotof_hub_network
+    depends_on:
+      - users
+      - namespaces
+
+  users:
+    container_name: lotof_hub_users
+    build:
+      context: ../lotof.hub.msvc.users
+      dockerfile: Dockerfile
+    networks:
+      - lotof_hub_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  namespaces:
+    container_name: lotof_hub_namespaces
+    build:
+      context: ../lotof.hub.msvc.namespaces
+      dockerfile: Dockerfile
+    networks:
+      - lotof_hub_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16
+    container_name: lotof_hub_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: lot_of_hub
+    ports:
+      - "5432:5432"
+    networks:
+      - lotof_hub_network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d lotofhub" ]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+
+networks:
+  lotof_hub_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
